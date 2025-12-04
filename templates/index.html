@@ -3,135 +3,326 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Contexto Nhóm Bạn</title>
+    <title>Contexto Đại Chiến</title>
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&display=swap" rel="stylesheet">
+    
+    <!-- FIREBASE SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+
     <style>
         :root { --primary: #6C5CE7; --bg: #DFE6E9; --card: #fff; --green: #00b894; --yellow: #fdcb6e; --red: #ff7675; }
         * { box-sizing: border-box; font-family: 'Nunito', sans-serif; }
         body { background: var(--bg); margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
         
-        h1 { color: var(--primary); font-weight: 900; margin-bottom: 5px; font-size: 2.5rem; text-shadow: 2px 2px 0px rgba(0,0,0,0.1); }
-        .subtitle { color: #636e72; margin-bottom: 25px; font-weight: 700; }
+        h1 { color: var(--primary); font-weight: 900; margin: 0; font-size: 2rem; }
+        .subtitle { color: #636e72; margin-bottom: 20px; font-weight: 700; font-size: 0.9rem; }
         
-        .container { width: 100%; max-width: 480px; }
-        
-        /* Input Area */
-        .input-box {
-            background: var(--card); padding: 10px; border-radius: 50px;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.05); display: flex; gap: 10px;
-            transition: transform 0.2s;
-        }
-        .input-box:focus-within { transform: translateY(-2px); box-shadow: 0 12px 25px rgba(108, 92, 231, 0.2); }
-        
-        input { flex: 1; border: none; outline: none; padding: 12px 20px; font-size: 1.1rem; border-radius: 40px; }
-        button {
-            background: var(--primary); color: white; border: none;
-            padding: 0 25px; border-radius: 40px; font-weight: 800; cursor: pointer;
-            transition: 0.2s; font-size: 1rem;
-        }
-        button:hover { background: #5649c0; }
-        button:disabled { background: #b2bec3; cursor: default; }
+        /* Screens */
+        .screen { display: none; width: 100%; max-width: 480px; flex-direction: column; gap: 15px; }
+        .active { display: flex; }
 
-        #msg { text-align: center; height: 30px; line-height: 30px; margin: 15px 0; font-weight: 800; color: var(--red); }
-
-        /* List Items */
-        .list { display: flex; flex-direction: column; gap: 10px; }
-        .item {
-            background: var(--card); padding: 15px 20px; border-radius: 15px;
-            display: flex; justify-content: space-between; align-items: center;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.03); animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
-        .rank { 
-            background: #b2bec3; color: white; padding: 5px 12px; 
-            border-radius: 10px; font-weight: 900; min-width: 50px; text-align: center; 
-        }
-        .word { font-weight: 700; font-size: 1.1rem; text-transform: capitalize; color: #2d3436; }
+        /* Card */
+        .card { background: var(--card); padding: 20px; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
         
-        /* Rank Colors */
-        .r-green { background: var(--green); box-shadow: 0 4px 10px rgba(0, 184, 148, 0.2); }
-        .r-yellow { background: var(--yellow); color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,0.1); }
-        .r-red { background: var(--red); }
+        /* Inputs & Buttons */
+        input { width: 100%; padding: 12px 15px; border: 2px solid #eee; border-radius: 10px; font-size: 1rem; outline: none; margin-bottom: 10px; }
+        input:focus { border-color: var(--primary); }
+        
+        button { width: 100%; padding: 12px; border: none; border-radius: 10px; font-weight: 800; cursor: pointer; font-size: 1rem; color: white; transition: 0.2s; margin-bottom: 5px;}
+        .btn-primary { background: var(--primary); }
+        .btn-green { background: var(--green); }
+        button:hover { transform: translateY(-2px); opacity: 0.9; }
 
-        @keyframes popIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        /* Leaderboard UI */
+        .room-header { background: #a29bfe; color: white; padding: 15px; border-radius: 15px; display: flex; justify-content: space-between; font-weight: 800; }
+        
+        .player-row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #eee; align-items: center; }
+        .player-row:last-child { border-bottom: none; }
+        .player-name { font-weight: 700; color: #2d3436; }
+        .player-rank { font-weight: 900; color: var(--primary); font-size: 1.1rem; }
+        .me { background: #f1f2f6; padding-left: 10px; padding-right: 10px; border-radius: 8px; }
+
+        /* Game Log */
+        .game-log { height: 180px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; margin-top: 15px; padding-right: 5px; }
+        .log-item { background: #f5f6fa; padding: 8px 12px; border-radius: 8px; display: flex; justify-content: space-between; font-size: 0.9rem; }
+        .r-badge { padding: 2px 8px; border-radius: 4px; color: white; font-weight: bold; font-size: 0.8rem; }
+        .bg-green { background: var(--green); } .bg-yellow { background: var(--yellow); } .bg-red { background: var(--red); }
+        
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 5px; }
     </style>
 </head>
 <body>
 
-    <h1>Contexto VN</h1>
-    <div class="subtitle">Chơi cùng hội bạn thân</div>
+    <h1>Contexto Đại Chiến</h1>
+    <div class="subtitle">Đấu trí cùng bạn bè</div>
 
-    <div class="container">
-        <div class="input-box">
-            <input type="text" id="inp" placeholder="Nhập từ đoán..." autocomplete="off">
-            <button id="btn" onclick="play()">Gửi</button>
+    <!-- MÀN HÌNH 1: SẢNH CHỜ (LOBBY) -->
+    <div id="lobbyScreen" class="screen active">
+        <div class="card">
+            <h3>👤 Tên hiển thị</h3>
+            <input type="text" id="username" placeholder="Nhập tên bạn (VD: Hùng Bá)...">
+            
+            <div style="height: 1px; background: #eee; margin: 20px 0;"></div>
+            
+            <h3>🏠 Tạo hoặc Vào phòng</h3>
+            <button class="btn-primary" onclick="createRoom()">👑 Tạo phòng mới</button>
+            <div style="text-align: center; margin: 10px; color: #aaa; font-size: 0.8rem;">- HOẶC -</div>
+            <input type="text" id="roomIdInput" placeholder="Nhập Mã phòng (VD: 1234)...">
+            <button class="btn-green" onclick="joinRoom()">🚀 Vào phòng ngay</button>
         </div>
-        <div id="msg"></div>
-        <div class="list" id="list"></div>
+    </div>
+
+    <!-- MÀN HÌNH 2: TRONG GAME -->
+    <div id="gameScreen" class="screen">
+        <div class="room-header">
+            <span id="displayRoomId">Phòng: ...</span>
+            <span id="displayStatus">Đang chờ...</span>
+        </div>
+
+        <!-- Bảng xếp hạng Realtime -->
+        <div class="card">
+            <h4 style="margin: 0 0 10px 0; color: #636e72;">🏆 Bảng Xếp Hạng</h4>
+            <div id="leaderboard"></div>
+        </div>
+
+        <!-- Khu vực đoán từ -->
+        <div class="card">
+            <div style="display: flex; gap: 10px;">
+                <input type="text" id="guessInput" placeholder="Nhập từ đoán..." autocomplete="off">
+                <button class="btn-primary" style="width: 80px;" onclick="submitGuess()">Gửi</button>
+            </div>
+            <div id="myMsg" style="text-align: center; color: var(--red); font-weight: bold; margin-top: 5px; min-height: 20px; font-size: 0.9rem;"></div>
+        </div>
+
+        <!-- Lịch sử đoán cá nhân -->
+        <div class="game-log" id="gameLog"></div>
     </div>
 
     <script>
-        const inp = document.getElementById('inp');
-        const btn = document.getElementById('btn');
-        const list = document.getElementById('list');
-        const msg = document.getElementById('msg');
+        // ============================================================
+        // CẤU HÌNH FIREBASE CỦA BẠN (Đã được điền sẵn)
+        const firebaseConfig = {
+            apiKey: "AIzaSyBhAN_r2JpGSAnjapMbbipu1SWMKcUkPaM",
+            authDomain: "contexto-vn.firebaseapp.com",
+            projectId: "contexto-vn",
+            storageBucket: "contexto-vn.firebasestorage.app",
+            messagingSenderId: "459236947038",
+            appId: "1:459236947038:web:b53cf9bf5af2602344b0cf"
+        };
+        // ============================================================
 
-        inp.addEventListener('keypress', (e) => { if(e.key === 'Enter') play() });
+        // 1. Khởi tạo Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
 
-        async function play() {
-            const word = inp.value.trim();
-            if(!word) return;
+        // Biến toàn cục
+        let myName = "";
+        let currentRoomId = "";
+        let currentGameId = 1; // ID từ bí mật
+        let isWinner = false;
 
-            btn.disabled = true;
-            btn.innerText = "...";
-            msg.innerText = "";
+        // --- CHỨC NĂNG: TẠO & VÀO PHÒNG ---
+
+        async function createRoom() {
+            myName = document.getElementById('username').value.trim();
+            if (!myName) return alert("Vui lòng nhập tên!");
+
+            // Random ID phòng (4 số)
+            const roomId = Math.floor(1000 + Math.random() * 9000).toString();
+            // Random ID màn chơi (Từ 1 đến 500) để mỗi lần chơi là một từ mới
+            const randomGameId = Math.floor(Math.random() * 500) + 1;
 
             try {
+                // Tạo phòng trên Firebase
+                await db.collection("rooms").doc(roomId).set({
+                    gameId: randomGameId,
+                    created: firebase.firestore.FieldValue.serverTimestamp(),
+                    players: [{ name: myName, bestRank: 99999, guesses: 0, winner: false }]
+                });
+                enterGame(roomId, randomGameId);
+            } catch (e) {
+                alert("Lỗi tạo phòng: " + e.message);
+                console.error(e);
+            }
+        }
+
+        async function joinRoom() {
+            myName = document.getElementById('username').value.trim();
+            const roomId = document.getElementById('roomIdInput').value.trim();
+            if (!myName || !roomId) return alert("Nhập đủ thông tin nhé!");
+
+            try {
+                const roomRef = db.collection("rooms").doc(roomId);
+                const doc = await roomRef.get();
+                
+                if (!doc.exists) return alert("Phòng không tồn tại!");
+                
+                // Thêm người chơi vào phòng
+                const data = doc.data();
+                const players = data.players || [];
+                
+                if(players.some(p => p.name === myName)) return alert("Tên bị trùng, đổi tên khác đi!");
+
+                players.push({ name: myName, bestRank: 99999, guesses: 0, winner: false });
+                await roomRef.update({ players: players });
+
+                enterGame(roomId, data.gameId);
+
+            } catch (e) {
+                alert("Lỗi vào phòng: " + e.message);
+                console.error(e);
+            }
+        }
+
+        function enterGame(roomId, gameId) {
+            currentRoomId = roomId;
+            currentGameId = gameId;
+
+            document.getElementById('lobbyScreen').classList.remove('active');
+            document.getElementById('gameScreen').classList.add('active');
+            document.getElementById('displayRoomId').innerText = "Phòng: " + roomId;
+
+            // Bắt đầu lắng nghe dữ liệu Realtime
+            listenToRoom();
+        }
+
+        // --- REAL-TIME DATA ---
+
+        function listenToRoom() {
+            db.collection("rooms").doc(currentRoomId).onSnapshot((doc) => {
+                if (!doc.exists) return;
+                const data = doc.data();
+                renderLeaderboard(data.players);
+                
+                // Kiểm tra người thắng
+                const winner = data.players.find(p => p.winner === true);
+                if (winner) {
+                    document.getElementById('displayStatus').innerText = `🏆 ${winner.name} THẮNG!`;
+                } else {
+                    document.getElementById('displayStatus').innerText = "Đang diễn ra...";
+                }
+            });
+        }
+
+        function renderLeaderboard(players) {
+            const list = document.getElementById('leaderboard');
+            list.innerHTML = "";
+            
+            // Xếp hạng: Rank nhỏ nhất lên đầu
+            players.sort((a, b) => a.bestRank - b.bestRank);
+
+            players.forEach(p => {
+                const isMe = p.name === myName;
+                const rankDisplay = p.bestRank === 99999 ? "--" : "#" + p.bestRank;
+                
+                const div = document.createElement('div');
+                div.className = `player-row ${isMe ? 'me' : ''}`;
+                div.innerHTML = `
+                    <div>
+                        ${p.winner ? '👑 ' : ''}<span class="player-name">${p.name}</span>
+                        <div style="font-size: 0.8rem; color: #666;">${p.guesses} lượt đoán</div>
+                    </div>
+                    <div class="player-rank">${rankDisplay}</div>
+                `;
+                list.appendChild(div);
+            });
+        }
+
+        // --- LOGIC GAME ---
+
+        const guessInput = document.getElementById('guessInput');
+        guessInput.addEventListener('keypress', (e) => { if(e.key === 'Enter') submitGuess() });
+
+        async function submitGuess() {
+            const word = guessInput.value.trim();
+            if (!word || isWinner) return;
+
+            const btn = document.querySelector('#gameScreen .btn-primary');
+            btn.disabled = true;
+            btn.innerText = "...";
+
+            try {
+                // Gọi Proxy với gameId
                 const res = await fetch('/api/proxy_guess', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({word: word})
+                    body: JSON.stringify({ word: word, gameId: currentGameId })
                 });
 
                 const data = await res.json();
-                
                 btn.disabled = false;
                 btn.innerText = "Gửi";
-                inp.value = '';
-                inp.focus();
+                guessInput.value = "";
+                guessInput.focus();
 
-                if(data.error) {
-                    msg.innerText = data.error;
+                if (data.error) {
+                    document.getElementById('myMsg').innerText = data.error;
                     return;
                 }
-                
-                // Render kết quả
-                const div = document.createElement('div');
-                div.className = 'item';
-                
-                // Xử lý màu sắc dựa trên Rank
-                // API của Minh trả về: { lemma: "từ", rank: 123, similarity: ... }
-                let rankClass = 'r-red';
-                if (data.rank === 1) rankClass = 'r-green';
-                else if (data.rank <= 300) rankClass = 'r-green';
-                else if (data.rank <= 1000) rankClass = 'r-yellow';
 
-                div.innerHTML = `
-                    <span class="word">${data.lemma || word}</span>
-                    <span class="rank ${rankClass}">#${data.rank}</span>
-                `;
+                document.getElementById('myMsg').innerText = "";
                 
-                list.insertBefore(div, list.firstChild);
+                // Hiển thị log
+                addLog(data);
 
-                if(data.rank === 1) {
-                    msg.style.color = "var(--green)";
-                    msg.innerText = "🏆 CHÚC MỪNG! BẠN THẮNG RỒI!";
+                // Cập nhật Firebase
+                await updateStats(data.rank);
+
+                if (data.rank === 1) {
+                    isWinner = true;
+                    alert("CHÚC MỪNG! BẠN ĐÃ CHIẾN THẮNG!");
                 }
 
-            } catch (err) {
+            } catch (e) {
                 btn.disabled = false;
                 btn.innerText = "Gửi";
-                msg.innerText = "Lỗi kết nối!";
+                document.getElementById('myMsg').innerText = "Lỗi mạng!";
+                console.error(e);
             }
+        }
+
+        function addLog(data) {
+            const log = document.getElementById('gameLog');
+            const div = document.createElement('div');
+            div.className = 'log-item';
+            
+            let color = 'bg-red';
+            if(data.rank === 1) color = 'bg-green';
+            else if(data.rank <= 300) color = 'bg-green';
+            else if(data.rank <= 1000) color = 'bg-yellow';
+
+            div.innerHTML = `
+                <span>${data.word || data.lemma}</span>
+                <span class="r-badge ${color}">#${data.rank}</span>
+            `;
+            log.insertBefore(div, log.firstChild);
+        }
+
+        async function updateStats(rank) {
+            const roomRef = db.collection("rooms").doc(currentRoomId);
+            
+            // Dùng Transaction để cập nhật dữ liệu an toàn
+            await db.runTransaction(async (transaction) => {
+                const doc = await transaction.get(roomRef);
+                if (!doc.exists) return;
+
+                const players = doc.data().players;
+                const myIndex = players.findIndex(p => p.name === myName);
+
+                if (myIndex !== -1) {
+                    players[myIndex].guesses += 1;
+                    if (rank < players[myIndex].bestRank) {
+                        players[myIndex].bestRank = rank;
+                    }
+                    if (rank === 1) {
+                        players[myIndex].winner = true;
+                    }
+                    transaction.update(roomRef, { players: players });
+                }
+            });
         }
     </script>
 </body>
