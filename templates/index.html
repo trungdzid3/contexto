@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contexto Nhóm Bạn</title>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root { --primary: #6C5CE7; --bg: #DFE6E9; --card: #fff; --green: #00b894; --yellow: #fdcb6e; --red: #ff7675; }
+        * { box-sizing: border-box; font-family: 'Nunito', sans-serif; }
+        body { background: var(--bg); margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+        
+        h1 { color: var(--primary); font-weight: 900; margin-bottom: 5px; font-size: 2.5rem; text-shadow: 2px 2px 0px rgba(0,0,0,0.1); }
+        .subtitle { color: #636e72; margin-bottom: 25px; font-weight: 700; }
+        
+        .container { width: 100%; max-width: 480px; }
+        
+        /* Input Area */
+        .input-box {
+            background: var(--card); padding: 10px; border-radius: 50px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.05); display: flex; gap: 10px;
+            transition: transform 0.2s;
+        }
+        .input-box:focus-within { transform: translateY(-2px); box-shadow: 0 12px 25px rgba(108, 92, 231, 0.2); }
+        
+        input { flex: 1; border: none; outline: none; padding: 12px 20px; font-size: 1.1rem; border-radius: 40px; }
+        button {
+            background: var(--primary); color: white; border: none;
+            padding: 0 25px; border-radius: 40px; font-weight: 800; cursor: pointer;
+            transition: 0.2s; font-size: 1rem;
+        }
+        button:hover { background: #5649c0; }
+        button:disabled { background: #b2bec3; cursor: default; }
+
+        #msg { text-align: center; height: 30px; line-height: 30px; margin: 15px 0; font-weight: 800; color: var(--red); }
+
+        /* List Items */
+        .list { display: flex; flex-direction: column; gap: 10px; }
+        .item {
+            background: var(--card); padding: 15px 20px; border-radius: 15px;
+            display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.03); animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .rank { 
+            background: #b2bec3; color: white; padding: 5px 12px; 
+            border-radius: 10px; font-weight: 900; min-width: 50px; text-align: center; 
+        }
+        .word { font-weight: 700; font-size: 1.1rem; text-transform: capitalize; color: #2d3436; }
+        
+        /* Rank Colors */
+        .r-green { background: var(--green); box-shadow: 0 4px 10px rgba(0, 184, 148, 0.2); }
+        .r-yellow { background: var(--yellow); color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+        .r-red { background: var(--red); }
+
+        @keyframes popIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    </style>
+</head>
+<body>
+
+    <h1>Contexto VN</h1>
+    <div class="subtitle">Chơi cùng hội bạn thân</div>
+
+    <div class="container">
+        <div class="input-box">
+            <input type="text" id="inp" placeholder="Nhập từ đoán..." autocomplete="off">
+            <button id="btn" onclick="play()">Gửi</button>
+        </div>
+        <div id="msg"></div>
+        <div class="list" id="list"></div>
+    </div>
+
+    <script>
+        const inp = document.getElementById('inp');
+        const btn = document.getElementById('btn');
+        const list = document.getElementById('list');
+        const msg = document.getElementById('msg');
+
+        inp.addEventListener('keypress', (e) => { if(e.key === 'Enter') play() });
+
+        async function play() {
+            const word = inp.value.trim();
+            if(!word) return;
+
+            btn.disabled = true;
+            btn.innerText = "...";
+            msg.innerText = "";
+
+            try {
+                const res = await fetch('/api/proxy_guess', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({word: word})
+                });
+
+                const data = await res.json();
+                
+                btn.disabled = false;
+                btn.innerText = "Gửi";
+                inp.value = '';
+                inp.focus();
+
+                if(data.error) {
+                    msg.innerText = data.error;
+                    return;
+                }
+                
+                // Render kết quả
+                const div = document.createElement('div');
+                div.className = 'item';
+                
+                // Xử lý màu sắc dựa trên Rank
+                // API của Minh trả về: { lemma: "từ", rank: 123, similarity: ... }
+                let rankClass = 'r-red';
+                if (data.rank === 1) rankClass = 'r-green';
+                else if (data.rank <= 300) rankClass = 'r-green';
+                else if (data.rank <= 1000) rankClass = 'r-yellow';
+
+                div.innerHTML = `
+                    <span class="word">${data.lemma || word}</span>
+                    <span class="rank ${rankClass}">#${data.rank}</span>
+                `;
+                
+                list.insertBefore(div, list.firstChild);
+
+                if(data.rank === 1) {
+                    msg.style.color = "var(--green)";
+                    msg.innerText = "🏆 CHÚC MỪNG! BẠN THẮNG RỒI!";
+                }
+
+            } catch (err) {
+                btn.disabled = false;
+                btn.innerText = "Gửi";
+                msg.innerText = "Lỗi kết nối!";
+            }
+        }
+    </script>
+</body>
+</html>
